@@ -1,121 +1,148 @@
-# SpyHunter v2.1 – Full Installation & Usage Guide
+# SpyHunter v2.1 — Veil‑Piercing Wizard
 
-### Table of Contents
+*Autonomous RF / BLE / Wi‑Fi counter‑surveillance toolkit*
 
-1. [Host prerequisites](#host-prerequisites)
-2. [One‑time installation](#one-time-installation)
-3. [Directory layout](#directory-layout)
-4. [Daily workflow](#daily-workflow)
-5. [Generated artefacts](#generated-artefacts)
-6. [Troubleshooting](#troubleshooting)
+![MIT License](https://img.shields.io/badge/license-MIT-blue)
+
+> **Repo** · [https://github.com/exfil0/SpyHunter](https://github.com/exfil0/SpyHunter)
 
 ---
 
-### 1 · Host prerequisites
+## Requirements (`requirements.txt`)
 
-| Category  | Requirement                                             | Why                                                           |
-| --------- | ------------------------------------------------------- | ------------------------------------------------------------- |
-| OS        | **Ubuntu 22.04 LTS** (server or desktop)                | Script hard‑codes paths and APT names.                        |
-| Privilege | **root (sudo)**                                         | Needs to install packages, enable monitor‑mode, kill drivers. |
-| Storage   | ≥ 5 GB free on `/` (500 MB minimum sanity guard)        | Captures + PDFs.                                              |
-| Hardware  | • HackRF One<br>• RTL‑SDR (RTL2832U)<br>• Ubertooth One | At least one of each detected by `lsusb`.                     |
+```text
+# SpyHunter runtime Python deps
+click>=8.1
+colorama>=0.4
+psutil>=5.9
+PyYAML>=6.0
 
-> **Tip:** Plug devices in **before** first run and ensure Ubuntu sees them ( `lsusb` ).
+# Data analysis
+numpy>=1.26
+pandas>=2.2
 
----
+# Packet & RF processing
+scapy==2.4.5
 
-### 2 · One‑time installation
-
-```bash
-# 1) create root directory
-sudo mkdir /SpyHunter && sudo chown $USER:$USER /SpyHunter
-
-# 2) drop files
-#    – spyhunter.py         (the full 2.1 script)
-#    – requirements.txt     (copy the block above)
-#    – optional README.md   (this guide)
-nano /SpyHunter/spyhunter.py      # paste the script
-nano /SpyHunter/requirements.txt  # paste requirements
-
-# 3) first run (auto‑installs everything)
-sudo python3 /SpyHunter/spyhunter.py baseline_cmd
+# Reporting / templating
+Jinja2>=3.1
+fpdf>=1.7
+weasyprint>=62.1
 ```
 
-What happens on first run?
+---
 
-1. **APT phase** – installs SDR drivers, WeasyPrint libs, etc.
-2. **Virtual‑env** in `/SpyHunter/.venv` + `requirements.txt` pip‑installed.
-3. **Filesystem** – helper scripts, configs, templates are generated.
-4. **Baseline capture** – a short RF/BLE/Wi‑Fi scan populates `/SpyHunter/baselines`.
+## Table of Contents
 
-Everything is idempotent; re‑running just skips installed parts.
+1. [Features](#features)
+2. [Architecture & folder layout](#architecture--folder-layout)
+3. [Prerequisites](#prerequisites)
+4. [Installation](#installation)
+5. [Daily workflow](#daily-workflow)
+6. [Generated artefacts](#generated-artefacts)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
-### 3 · Directory layout
+## Features
 
-```
+* **Tri‑band capture** – HackRF sweeps, RTL‑SDR slices, Ubertooth BLE pcaps, airodump Wi‑Fi csv/pcaps.
+* **Advanced analytics** – RF power‑bin deltas, BLE service fingerprinting, hidden‑SSID & rogue‑AP detection.
+* **Cross‑protocol groundwork** – timestamps preserved for future correlation engine.
+* **Immutable ledger** – SHA‑512 of every PDF report stored in SQLite.
+* **Single‑command wizard** – `sudo python3 spyhunter.py wizard` fully automates baseline → sweep → PDF.
+
+---
+
+## Architecture & folder layout
+
+```text
 /SpyHunter
  ├─ spyhunter.py            # main launcher
- ├─ requirements.txt
- ├─ .venv/                  # isolated python
+ ├─ requirements.txt        # Python deps
  ├─ bin/                    # helper bash wrappers (auto‑generated)
- ├─ config/
- │   ├─ settings.json       # tweak thresholds etc.
- │   └─ signatures.json     # benign / suspicious fingerprints
+ ├─ config/                 # settings.json & signatures.json
  ├─ data/
- │   ├─ captures/           # raw CSV/PCAP from each run
- │   ├─ baselines/          # processed baselines (*.json)
+ │   ├─ captures/           # raw CSV / PCAP / logs
+ │   ├─ baselines/          # processed fingerprints
  │   ├─ reports/            # PDF outputs
  │   ├─ logs/
  │   │   ├─ system_audit.log
  │   │   └─ detection_alerts.log
- │   └─ ledger.db           # immutable SHA ledger
- └─ templates/
-     └─ report_template.html
+ │   └─ ledger.db           # SHA ledger
+ ├─ templates/
+ │   └─ report_template.html
+ └─ .venv/                  # isolated Python (auto‑created)
 ```
 
 ---
 
-### 4 · Daily workflow
+## Prerequisites
 
-| Action                                        | Command                                                                            | What it does                                          |
-| --------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Initial baseline**                          | `sudo python3 /SpyHunter/spyhunter.py baseline_cmd`                                | Records RF/BLE/Wi‑Fi footprint for future comparison. |
-| **Quick sweep**                               | `sudo python3 /SpyHunter/spyhunter.py sweep_cmd --duration 180 --profile Office_1` | Uses latest baseline; produces PDF in `reports/`.     |
-| **Full wizard** (create new baseline + sweep) | `sudo python3 /SpyHunter/spyhunter.py wizard --profile HQ_Floor1_Adv`              | End‑to‑end 5‑min scan; best for new locations.        |
-| **Show last 10 reports**                      | `sudo python3 /SpyHunter/spyhunter.py ledger --rows 10`                            | Lists file names + SHA snippets.                      |
-
-**Typical SOP**
-
-1. Arrive on‑site → run **wizard** (new baseline + sweep).
-2. Any change in layout/equipment → run **baseline\_cmd** again.
-3. For routine checks (daily/weekly) → run **sweep\_cmd**.
+| Item      | Requirement                                   |
+| --------- | --------------------------------------------- |
+| OS        | Ubuntu 22.04 LTS                              |
+| Privilege | root / sudo                                   |
+| Storage   | ≥ 5 GB free (script aborts if < 500 MB)       |
+| Hardware  | HackRF One, RTL‑SDR (RTL2832U), Ubertooth One |
+| Internet  | Required on first run                         |
 
 ---
 
-### 5 · Generated artefacts
+## Installation
 
-| File                                     | Location     | Purpose                                                          |
-| ---------------------------------------- | ------------ | ---------------------------------------------------------------- |
-| `baseline_*.json`                        | `baselines/` | Numerical RF powers, BLE & Wi‑Fi device lists.                   |
-| `*_wifi*.csv / *_ble*.pcap / *_rtl*.csv` | `captures/`  | Raw evidence (kept until manual purge / retention days).         |
-| `*_report.pdf`                           | `reports/`   | Human‑readable report incl. anomaly list & log tails.            |
-| `ledger.db`                              | `data/`      | SQLite ledger – path + SHA‑512 of every report (tamper‑evident). |
+```bash
+# Clone repository
+sudo git clone https://github.com/exfil0/SpyHunter.git /SpyHunter
+cd /SpyHunter
 
----
+# First launch (installs APT + pip deps, creates baseline)
+sudo python3 spyhunter.py baseline_cmd
+```
 
-### 6 · Troubleshooting
-
-| Symptom                  | Likely cause / fix                                                                       |                |
-| ------------------------ | ---------------------------------------------------------------------------------------- | -------------- |
-| `No HackRF boards found` | USB cable / power / kernel driver conflict – run \`dmesg                                 | grep hackrf\`. |
-| `rtl_test -t` fails      | DVB‑T kernel modules loaded. Script auto‑blacklists, but a **reboot** may be required.   |                |
-| PDF empty or HTML shown  | WeasyPrint missing GTK/Pango libs – ensure `apt install weasyprint libpango1.0-0`.       |                |
-| BLE capture 0 kB         | Ubertooth firmware < v2023‑07‑xx – upgrade with `ubertooth-dfu`.                         |                |
-| Disk fills with captures | Change `settings.json → data_retention_days` or cron‑purge `captures/`.                  |                |
-| Need extra SDR ranges    | Edit `settings.json` → `rf_scan.rtl_freqs_sweep_mhz` (comma‑separated start\:end\:step). |                |
+The first run is **idempotent** – subsequent runs skip installed parts.
 
 ---
 
-**That’s it — happy hunting.** Feel free to tweak thresholds, report template, or helper scripts; all are regenerated only if missing, so manual edits persist.
+## Daily workflow
+
+| Purpose                       | Command                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| Create/refresh baseline       | `sudo python3 spyhunter.py baseline_cmd`                                 |
+| One‑off sweep                 | `sudo python3 spyhunter.py sweep_cmd --duration 300 --profile Office_AM` |
+| Full wizard (baseline+ sweep) | `sudo python3 spyhunter.py wizard --profile HQ_Floor1_Adv`               |
+| View ledger                   | `sudo python3 spyhunter.py ledger --rows 10`                             |
+
+---
+
+## Generated artefacts
+
+| Path              | Description                                   |
+| ----------------- | --------------------------------------------- |
+| `data/captures/`  | Raw evidence from each scan                   |
+| `data/baselines/` | Environment fingerprints                      |
+| `data/reports/`   | PDF reports with anomalies                    |
+| `data/ledger.db`  | Immutable ledger (filename + SHA + timestamp) |
+
+---
+
+## Troubleshooting
+
+| Symptom                | Fix                                                                       |
+| ---------------------- | ------------------------------------------------------------------------- |
+| No HackRF boards found | Check USB, `dmesg`; ensure `1d50:6089` present                            |
+| `rtl_test -t` fails    | DVB‑T drivers loaded → script blacklists; reboot once                     |
+| Empty BLE pcap         | Upgrade Ubertooth firmware (`ubertooth-dfu`)                              |
+| Blank PDF              | Ensure `libpango1.0-0`, `libgdk-pixbuf2.0-0` installed (wizard does this) |
+| Disk fills             | Purge `data/captures/` or adjust retention logic                          |
+
+---
+
+### Contributing
+
+1. Fork the repo and create a feature branch.
+2. Follow PEP‑8; run `black` + `isort` before opening a PR.
+
+### License
+
+MIT – see `LICENSE` in the repository.
