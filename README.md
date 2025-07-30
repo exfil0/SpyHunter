@@ -1,40 +1,4 @@
-Below is everything you asked for, in two parts:
-
-1. **`requirements.txt`** – copy‑paste this file into `/SpyHunter/requirements.txt`.
-2. **Step‑by‑step guide** (Markdown) – save as `/SpyHunter/README.md` or keep it for reference.
-
----
-
-## 1 · `requirements.txt`
-
-> Only runtime Python libraries are listed here.
-> All low‑level deps (GTK/Pango, rtl‑sdr, hackrf etc.) are handled by APT inside the wizard.
-
-```text
-# Core CLI / UX
-click>=8.1
-colorama>=0.4
-
-# System introspection
-psutil>=5.9
-PyYAML>=6.0
-
-# Data analysis / science
-numpy>=1.26
-pandas>=2.2
-
-# Packet & RF processing
-scapy==2.4.5          # 2.5+ breaks Bluetooth helpers
-
-# Reporting / templating
-Jinja2>=3.1
-fpdf>=1.7
-weasyprint>=62.1      # HTML‑to‑PDF (uses Cairo/Pango from APT)
-```
-
----
-
-## 2 · SpyHunter v2.1 – Full Installation & Usage Guide
+# SpyHunter v2.1 – Full Installation & Usage Guide
 
 ### Table of Contents
 
