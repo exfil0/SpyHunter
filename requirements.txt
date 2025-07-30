@@ -1,0 +1,19 @@
+# Core CLI / UX
+click>=8.1
+colorama>=0.4
+
+# System introspection
+psutil>=5.9
+PyYAML>=6.0
+
+# Data analysis / science
+numpy>=1.26
+pandas>=2.2
+
+# Packet & RF processing
+scapy==2.4.5          # 2.5+ breaks Bluetooth helpers
+
+# Reporting / templating
+Jinja2>=3.1
+fpdf>=1.7
+weasyprint>=62.1      # HTML‑to‑PDF (uses Cairo/Pango from APT)
